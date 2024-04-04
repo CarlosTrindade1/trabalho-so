@@ -20,7 +20,38 @@
 /* Reads in an executable file in ELF format*/
 Elf32_Phdr * read_exec_file(FILE **execfile, char *filename, Elf32_Ehdr **ehdr)
 { 
+	FILE *file = fopen(filename, "rb");
+    if (file == NULL) {
+        perror("Erro ao abrir o arquivo");
+        exit(EXIT_FAILURE);
+    }
 
+	fread(*ehdr, sizeof(Elf32_Ehdr), 1, file);
+
+	// Verifica a identificação ELF
+    if ((*ehdr)->e_ident[EI_MAG0] != ELFMAG0 || (*ehdr)->e_ident[EI_MAG1] != ELFMAG1 ||
+        (*ehdr)->e_ident[EI_MAG2] != ELFMAG2 || (*ehdr)->e_ident[EI_MAG3] != ELFMAG3) {
+        fprintf(stderr, "Arquivo não é um arquivo ELF válido.\n");
+        exit(EXIT_FAILURE);
+    }
+
+	// Aloca memória para armazenar o cabeçalho do programa
+    Elf32_Phdr *program_header = malloc(sizeof(Elf32_Phdr) * (*ehdr)->e_phnum);
+
+    if (program_header == NULL) {
+        perror("Erro de alocação de memória");
+        exit(EXIT_FAILURE);
+    }
+
+	// Move o ponteiro do arquivo para o início da tabela de cabeçalhos de programas
+    fseek(file, (*ehdr)->e_phoff, SEEK_SET);
+
+    // Le os cabeçalhos de programa
+    fread(program_header, sizeof(Elf32_Phdr), (*ehdr)->e_phnum, file);
+
+    fclose(file);
+
+    return program_header;
 }
 
 /* Writes the bootblock to the image file */
@@ -75,10 +106,12 @@ int main(int argc, char **argv)
 	/* build image file */
 
 	/* read executable bootblock file */  
+	boot_program_header = read_exec_file(&bootfile, argv[1], &boot_header);
 
 	/* write bootblock */  
 
 	/* read executable kernel file */
+	kernel_program_header = read_exec_file(&kernelfile, argv[2], &kernel_header);
 
 	/* write kernel segments to image */
 
