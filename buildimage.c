@@ -68,6 +68,10 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 	// Ler o conteúdo do segmento do bootblock do bootfile
     fread(boot_data, 1, boot_phdr->p_filesz, bootfile);
 
+    for (int i = 0; i < boot_phdr->p_filesz / sizeof(uint32_t); i++) {
+        ((uint32_t *)boot_data)[i] = htonl(((uint32_t *)boot_data)[i]);
+    }
+
     // Escrever o conteúdo do segmento do bootblock no arquivo de imagem
     fwrite(boot_data, 1, boot_phdr->p_filesz, *imagefile);
 
@@ -77,7 +81,8 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 
 /* Writes the kernel to the image file */
 void write_kernel(FILE **imagefile,FILE *kernelfile,Elf32_Ehdr *kernel_header, Elf32_Phdr *kernel_phdr)
-{ 
+{
+
 }
 
 /* Counts the number of sectors in the kernel */
