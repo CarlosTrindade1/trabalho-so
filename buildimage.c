@@ -57,6 +57,22 @@ Elf32_Phdr * read_exec_file(FILE **execfile, char *filename, Elf32_Ehdr **ehdr)
 /* Writes the bootblock to the image file */
 void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, Elf32_Phdr *boot_phdr)
 {
+	fseek(bootfile, boot_phdr->p_offset, SEEK_SET);
+
+	char *boot_data = malloc(boot_phdr->p_filesz);
+    if (boot_data == NULL) {
+        perror("Error allocating memory");
+        exit(1);
+    }
+
+	// Ler o conteúdo do segmento do bootblock do bootfile
+    fread(boot_data, 1, boot_phdr->p_filesz, bootfile);
+
+    // Escrever o conteúdo do segmento do bootblock no arquivo de imagem
+    fwrite(boot_data, 1, boot_phdr->p_filesz, *imagefile);
+
+    // Liberar a memória alocada
+    free(boot_data);
 }
 
 /* Writes the kernel to the image file */
@@ -104,11 +120,19 @@ int main(int argc, char **argv)
 	Elf32_Phdr *kernel_program_header; // kernel ELF program header
 
 	/* build image file */
+	imagefile = fopen("imagem.bin", "wb");
+
+    if (imagefile == NULL) {
+        perror("Error creating image file");
+        return 1;
+    }
 
 	/* read executable bootblock file */  
+	bootfile = fopen(argv[1], "rb");
 	boot_program_header = read_exec_file(&bootfile, argv[1], &boot_header);
 
 	/* write bootblock */  
+	write_bootblock(&imagefile, bootfile, boot_header, boot_program_header);
 
 	/* read executable kernel file */
 	kernel_program_header = read_exec_file(&kernelfile, argv[2], &kernel_header);
@@ -121,7 +145,7 @@ int main(int argc, char **argv)
 	if(!strncmp(argv[1], "--extended", 11)) {
 		/* print info */
 	}
-  
+	
 	return 0;
 } // ends main()
 
