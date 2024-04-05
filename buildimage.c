@@ -55,10 +55,6 @@ Elf32_Phdr * read_exec_file(FILE **execfile, char *filename, Elf32_Ehdr **ehdr)
     return program_header;
 }
 
-void swap_bytes_16(uint16_t *value) {
-    *value = (*value >> 8) | (*value << 8);
-}
-
 void writeZerosAndSignature(FILE *imagefile) {
     long current_offset = ftell(imagefile);
 
@@ -92,12 +88,6 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
     // completa o ultimo byte com 00 - necessario pra inversão dar certo no ultimo byte
     boot_data[boot_phdr->p_filesz] = 0x00;
 
-    //inverte bits
-    for (size_t i = 0; i < boot_phdr->p_filesz; i += 2) {
-        uint16_t *value = (uint16_t *)(boot_data + i);
-        swap_bytes_16(value);
-    }
-
     //escreve o conteúdo do segmento do bootblock no arquivo de imagem
     fwrite(boot_data, 1, boot_phdr->p_filesz + 1, *imagefile);
 
@@ -120,12 +110,6 @@ void write_kernel(FILE **imagefile,FILE *kernelfile,Elf32_Ehdr *kernel_header, E
 
     //le conteudo do kernel
     fread(kernel_data, 1, kernel_phdr->p_filesz, kernelfile);
-
-    //inverte bits
-    for (size_t i = 0; i < kernel_phdr->p_filesz; i += 2) {
-        uint16_t *value = (uint16_t *)(kernel_data + i);
-        swap_bytes_16(value);
-    }
 
     //escreve o conteúdo do segmento do bootblock no arquivo de imagem
     fwrite(kernel_data, 1, kernel_phdr->p_filesz + 1, *imagefile);
