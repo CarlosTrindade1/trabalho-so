@@ -9,6 +9,7 @@
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdint.h>
 
 #define IMAGE_FILE "./image"
 #define ARGS "[--extended] <bootblock> <executable-file> ..."
@@ -54,6 +55,9 @@ Elf32_Phdr * read_exec_file(FILE **execfile, char *filename, Elf32_Ehdr **ehdr)
     return program_header;
 }
 
+void swap_bytes_16(uint16_t *value) {
+    *value = (*value >> 8) | (*value << 8);
+}
 /* Writes the bootblock to the image file */
 void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, Elf32_Phdr *boot_phdr)
 {
@@ -67,11 +71,12 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 
 	// Ler o conteúdo do segmento do bootblock do bootfile
     fread(boot_data, 1, boot_phdr->p_filesz, bootfile);
-
-    for (int i = 0; i < boot_phdr->p_filesz / sizeof(uint32_t); i++) {
-        ((uint32_t *)boot_data)[i] = htonl(((uint32_t *)boot_data)[i]);
+    
+    for (size_t i = 0; i < boot_phdr->p_filesz - 1; i += 2) {
+        uint16_t *value = (uint16_t *)(boot_data + i);
+        swap_bytes_16(value);
     }
-
+    
     // Escrever o conteúdo do segmento do bootblock no arquivo de imagem
     fwrite(boot_data, 1, boot_phdr->p_filesz, *imagefile);
 
