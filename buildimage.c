@@ -58,12 +58,29 @@ Elf32_Phdr * read_exec_file(FILE **execfile, char *filename, Elf32_Ehdr **ehdr)
 void swap_bytes_16(uint16_t *value) {
     *value = (*value >> 8) | (*value << 8);
 }
+
+void writeZerosAndSignature(FILE *imagefile) {
+    long current_offset = ftell(imagefile);
+
+    // calcula quantos bytes de zero devem ser adicionados
+    long zeros_to_add = 0x200 - current_offset;
+
+    // escreve zeros até o offset desejado
+    for (long i = 0; i < zeros_to_add - 2; i++) {
+        fputc(0, imagefile);
+    }
+
+    //escreve assinatura específica
+    unsigned char aa55[] = { 0xAA, 0x55 };
+    fwrite(aa55, 1, sizeof(aa55), imagefile);
+}
+
 /* Writes the bootblock to the image file */
 void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, Elf32_Phdr *boot_phdr)
 {
 	fseek(bootfile, boot_phdr->p_offset, SEEK_SET);
 
-	char *boot_data = malloc(boot_phdr->p_filesz);
+	char *boot_data = malloc(boot_phdr->p_filesz + 1);
     if (boot_data == NULL) {
         perror("Error allocating memory");
         exit(1);
@@ -72,13 +89,19 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 	// Ler o conteúdo do segmento do bootblock do bootfile
     fread(boot_data, 1, boot_phdr->p_filesz, bootfile);
     
-    for (size_t i = 0; i < boot_phdr->p_filesz - 1; i += 2) {
+    // completa o ultimo byte com 00 - necessario pra inversão dar certo no ultimo byte
+    boot_data[boot_phdr->p_filesz] = 0x00;
+
+    //inverte bits
+    for (size_t i = 0; i < boot_phdr->p_filesz; i += 2) {
         uint16_t *value = (uint16_t *)(boot_data + i);
         swap_bytes_16(value);
     }
-    
-    // Escrever o conteúdo do segmento do bootblock no arquivo de imagem
-    fwrite(boot_data, 1, boot_phdr->p_filesz, *imagefile);
+
+    //escreve o conteúdo do segmento do bootblock no arquivo de imagem
+    fwrite(boot_data, 1, boot_phdr->p_filesz + 1, *imagefile);
+
+    writeZerosAndSignature(*imagefile);
 
     // Liberar a memória alocada
     free(boot_data);
