@@ -110,7 +110,25 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 /* Writes the kernel to the image file */
 void write_kernel(FILE **imagefile,FILE *kernelfile,Elf32_Ehdr *kernel_header, Elf32_Phdr *kernel_phdr)
 {
+    fseek(kernelfile, kernel_phdr->p_offset, SEEK_SET);
 
+    char *kernel_data = malloc(kernel_phdr->p_filesz + 1);
+    if (kernel_data == NULL) {
+        perror("Error allocating memory");
+        exit(1);
+    }
+
+    //le conteudo do kernel
+    fread(kernel_data, 1, kernel_phdr->p_filesz, kernelfile);
+
+    //inverte bits
+    for (size_t i = 0; i < kernel_phdr->p_filesz; i += 2) {
+        uint16_t *value = (uint16_t *)(kernel_data + i);
+        swap_bytes_16(value);
+    }
+
+    //escreve o conteúdo do segmento do bootblock no arquivo de imagem
+    fwrite(kernel_data, 1, kernel_phdr->p_filesz + 1, *imagefile);
 }
 
 /* Counts the number of sectors in the kernel */
@@ -168,9 +186,11 @@ int main(int argc, char **argv)
 	write_bootblock(&imagefile, bootfile, boot_header, boot_program_header);
 
 	/* read executable kernel file */
+    kernelfile = fopen(argv[2], "rb");
 	kernel_program_header = read_exec_file(&kernelfile, argv[2], &kernel_header);
 
 	/* write kernel segments to image */
+    write_kernel(&imagefile, kernelfile, kernel_header, kernel_program_header);
 
 	/* tell the bootloader how many sectors to read to load the kernel */
 
