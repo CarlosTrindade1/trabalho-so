@@ -102,7 +102,7 @@ void write_kernel(FILE **imagefile,FILE *kernelfile,Elf32_Ehdr *kernel_header, E
 {
     fseek(kernelfile, kernel_phdr->p_offset, SEEK_SET);
 
-    char *kernel_data = malloc(kernel_phdr->p_filesz + 1);
+    char *kernel_data = malloc(kernel_phdr->p_filesz);
     if (kernel_data == NULL) {
         perror("Error allocating memory");
         exit(1);
@@ -111,19 +111,28 @@ void write_kernel(FILE **imagefile,FILE *kernelfile,Elf32_Ehdr *kernel_header, E
     //le conteudo do kernel
     fread(kernel_data, 1, kernel_phdr->p_filesz, kernelfile);
 
-    //escreve o conteúdo do segmento do bootblock no arquivo de imagem
-    fwrite(kernel_data, 1, kernel_phdr->p_filesz + 1, *imagefile);
+    //escreve o conteúdo do segmento do kernel no arquivo de imagem
+    fwrite(kernel_data, 1, kernel_phdr->p_filesz, *imagefile);
+
+    free(kernel_data);
 }
 
 /* Counts the number of sectors in the kernel */
 int count_kernel_sectors(Elf32_Ehdr *kernel_header, Elf32_Phdr *kernel_phdr)
 {   
-    return 0;
+    return (kernel_phdr->p_filesz / 512) + (kernel_phdr->p_filesz % 512 != 0);;
 }
 
 /* Records the number of sectors in the kernel */
 void record_kernel_sectors(FILE **imagefile,Elf32_Ehdr *kernel_header, Elf32_Phdr *kernel_phdr, int num_sec)
 {    
+    fseek(*imagefile, 2, SEEK_SET);
+
+    // Escreve o número de setores do kernel no segundo byte
+    fputc(num_sec, *imagefile);
+
+    // Fecha o arquivo
+    fclose(*imagefile);
 }
 
 
@@ -166,17 +175,19 @@ int main(int argc, char **argv)
 	bootfile = fopen(argv[1], "rb");
 	boot_program_header = read_exec_file(&bootfile, argv[1], &boot_header);
 
-	/* write bootblock */  
-	write_bootblock(&imagefile, bootfile, boot_header, boot_program_header);
-
-	/* read executable kernel file */
+    /* read executable kernel file */
     kernelfile = fopen(argv[2], "rb");
 	kernel_program_header = read_exec_file(&kernelfile, argv[2], &kernel_header);
+
+	/* write bootblock */  
+	write_bootblock(&imagefile, bootfile, boot_header, boot_program_header);
 
 	/* write kernel segments to image */
     write_kernel(&imagefile, kernelfile, kernel_header, kernel_program_header);
 
 	/* tell the bootloader how many sectors to read to load the kernel */
+    int numSetoresKernel = count_kernel_sectors(kernel_header, kernel_program_header);
+    record_kernel_sectors(&imagefile, kernel_header, kernel_program_header, numSetoresKernel);
 
 	/* check for  --extended option */
 	if(!strncmp(argv[1], "--extended", 11)) {
