@@ -58,7 +58,7 @@ Elf32_Phdr * read_exec_file(FILE **execfile, char *filename, Elf32_Ehdr **ehdr)
 void writeZerosAndSignature(FILE *imagefile) {
     long current_offset = ftell(imagefile);
 
-    // calcula quantos bytes de zero devem ser adicionados
+    // calcula quantos bytes de zero devem ser adicionados. 0x200 é 512 em hex.
     long zeros_to_add = 0x200 - current_offset;
 
     // escreve zeros até o offset desejado
@@ -76,7 +76,7 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 {
 	fseek(bootfile, boot_phdr->p_offset, SEEK_SET);
 
-	char *boot_data = malloc(boot_phdr->p_filesz + 1);
+	char *boot_data = malloc(boot_phdr->p_filesz);
     if (boot_data == NULL) {
         perror("Error allocating memory");
         exit(1);
@@ -85,11 +85,8 @@ void write_bootblock(FILE **imagefile,FILE *bootfile,Elf32_Ehdr *boot_header, El
 	// Ler o conteúdo do segmento do bootblock do bootfile
     fread(boot_data, 1, boot_phdr->p_filesz, bootfile);
     
-    // completa o ultimo byte com 00 - necessario pra inversão dar certo no ultimo byte
-    boot_data[boot_phdr->p_filesz] = 0x00;
-
     //escreve o conteúdo do segmento do bootblock no arquivo de imagem
-    fwrite(boot_data, 1, boot_phdr->p_filesz + 1, *imagefile);
+    fwrite(boot_data, 1, boot_phdr->p_filesz, *imagefile);
 
     writeZerosAndSignature(*imagefile);
 
