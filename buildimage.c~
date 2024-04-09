@@ -61,10 +61,8 @@ void writeZerosAndSignature(FILE *imagefile) {
     // calcula quantos bytes de zero devem ser adicionados. 0x200 é 512 em hex.
     long zeros_to_add = 0x200 - current_offset;
 
-    long i;
-
     // escreve zeros até o offset desejado
-    for (i = 0; i < zeros_to_add - 2; i++) {
+    for (long i = 0; i < zeros_to_add - 2; i++) {
         fputc(0, imagefile);
     }
 
