@@ -67,7 +67,7 @@ void writeZerosAndSignature(FILE *imagefile) {
     }
 
     //escreve assinatura específica
-    unsigned char aa55[] = { 0xAA, 0x55 };
+    unsigned char aa55[] = { 0x55, 0xAA };
     fwrite(aa55, 1, sizeof(aa55), imagefile);
 }
 
