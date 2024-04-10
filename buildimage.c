@@ -138,7 +138,7 @@ void record_kernel_sectors(FILE **imagefile,Elf32_Ehdr *kernel_header, Elf32_Phd
 /* Prints segment information for --extended option */
 void extended_opt(Elf32_Phdr *bph, int k_phnum, Elf32_Phdr *kph, int num_sec)
 {
-
+    printf("os_size: %d sectors\n", num_sec);
 	/* print number of disk sectors used by the image */
 
   
@@ -170,13 +170,23 @@ int main(int argc, char **argv)
         return 1;
     }
 
+	int bootblock_filename_index = 1;
+    int kernel_filename_index = 2;
+
+    int is_extended_version = !strncmp(argv[1], "--extended", 11);
+
+    if (is_extended_version) {
+		bootblock_filename_index = 2;
+        kernel_filename_index = 3;
+	}
+
 	/* read executable bootblock file */  
-	bootfile = fopen(argv[1], "rb");
-	boot_program_header = read_exec_file(&bootfile, argv[1], &boot_header);
+	bootfile = fopen(argv[bootblock_filename_index], "rb");
+	boot_program_header = read_exec_file(&bootfile, argv[bootblock_filename_index], &boot_header);
 
     /* read executable kernel file */
-    kernelfile = fopen(argv[2], "rb");
-	kernel_program_header = read_exec_file(&kernelfile, argv[2], &kernel_header);
+    kernelfile = fopen(argv[kernel_filename_index], "rb");
+	kernel_program_header = read_exec_file(&kernelfile, argv[kernel_filename_index], &kernel_header);
 
 	/* write bootblock */  
 	write_bootblock(&imagefile, bootfile, boot_header, boot_program_header);
@@ -185,12 +195,12 @@ int main(int argc, char **argv)
     write_kernel(&imagefile, kernelfile, kernel_header, kernel_program_header);
 
 	/* tell the bootloader how many sectors to read to load the kernel */
-    int numSetoresKernel = count_kernel_sectors(kernel_header, kernel_program_header);
-    record_kernel_sectors(&imagefile, kernel_header, kernel_program_header, numSetoresKernel);
+    int number_of_sectors = count_kernel_sectors(kernel_header, kernel_program_header);
+    record_kernel_sectors(&imagefile, kernel_header, kernel_program_header, number_of_sectors);
 
 	/* check for  --extended option */
-	if(!strncmp(argv[1], "--extended", 11)) {
-		/* print info */
+	if (is_extended_version) {
+		extended_opt(boot_program_header, 0, kernel_program_header, number_of_sectors);
 	}
 	
 	return 0;

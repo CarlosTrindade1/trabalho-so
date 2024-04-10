@@ -2,7 +2,7 @@ megs: 32
 romimage: file=/usr/share/bochs/BIOS-bochs-latest
 vgaromimage: file=/usr/share/bochs/VGABIOS-lgpl-latest
 vga: extension=vbe
-floppya: 1_44=imagem.bin, status=inserted
+floppya: 1_44=image, status=inserted
 boot: a
 log: /dev/null
 mouse: enabled=0
