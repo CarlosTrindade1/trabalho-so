@@ -122,6 +122,12 @@ int count_kernel_sectors(Elf32_Ehdr *kernel_header, Elf32_Phdr *kernel_phdr)
     return (kernel_phdr->p_filesz / 512) + (kernel_phdr->p_filesz % 512 != 0);;
 }
 
+/* Counts the number of sectors in the bootblock */
+int count_bootblock_sectors(Elf32_Phdr *bootblock_phdr)
+{
+	return (bootblock_phdr->p_filesz / 512) + (bootblock_phdr->p_filesz % 512 != 0);;
+}
+
 /* Records the number of sectors in the kernel */
 void record_kernel_sectors(FILE **imagefile,Elf32_Ehdr *kernel_header, Elf32_Phdr *kernel_phdr, int num_sec)
 {    
@@ -136,17 +142,28 @@ void record_kernel_sectors(FILE **imagefile,Elf32_Ehdr *kernel_header, Elf32_Phd
 
 
 /* Prints segment information for --extended option */
-void extended_opt(Elf32_Phdr *bph, int k_phnum, Elf32_Phdr *kph, int num_sec)
+void extended_opt(Elf32_Phdr *bph, int k_phnum, Elf32_Phdr *kph, int num_sec, char* kernel_filename, char* bootblock_filename)
 {
-    printf("os_size: %d sectors\n", num_sec);
-	/* print number of disk sectors used by the image */
+	int numbers_of_sectors_bootblock = count_bootblock_sectors(bph);
 
-  
 	/* bootblock segment info */
- 
-
+    printf("0x%04x: ./%s\n", 0, bootblock_filename);
+    printf("	segment %d\n", 0);
+	printf("		offset 0x%04x		vaddr 0x%04x\n", bph->p_offset, bph->p_vaddr);
+    printf("		filesz 0x%04x		memsz 0x%04x\n", bph->p_filesz, bph->p_memsz);
+    printf("		writing 0x%04x bytes\n", bph->p_filesz);
+    printf("		padding up to 0x%04x\n", numbers_of_sectors_bootblock * 512);
+    
 	/* print kernel segment info */
-  
+    printf("0x%04x: ./%s\n", 0x1000, kernel_filename);
+	printf("	segment %d\n", 0);
+	printf("		offset 0x%04x		vaddr 0x%04x\n", kph->p_offset, kph->p_vaddr);
+    printf("		filesz 0x%04x		memsz 0x%04x\n", kph->p_filesz, kph->p_memsz);
+    printf("		writing 0x%04x bytes\n", kph->p_filesz);
+    printf("		padding up to 0x%04x\n", num_sec * 512);
+	
+	/* print number of disk sectors used by the image */
+	printf("os_size teste: %d sectors\n", num_sec);
 
 	/* print kernel size in sectors */
 }
@@ -163,7 +180,7 @@ int main(int argc, char **argv)
 	Elf32_Phdr *kernel_program_header; // kernel ELF program header
 
 	/* build image file */
-	imagefile = fopen("imagem.bin", "wb");
+	imagefile = fopen("image", "wb");
 
     if (imagefile == NULL) {
         perror("Error creating image file");
@@ -200,7 +217,10 @@ int main(int argc, char **argv)
 
 	/* check for  --extended option */
 	if (is_extended_version) {
-		extended_opt(boot_program_header, 0, kernel_program_header, number_of_sectors);
+		extended_opt(boot_program_header, 0, kernel_program_header, number_of_sectors, argv[kernel_filename_index], argv[bootblock_filename_index]);
+	} else {
+		printf("0x%04x: ./%s\n", 0, argv[bootblock_filename_index]);
+        printf("0x%04x: ./%s\n", 0x1000, argv[kernel_filename_index]);
 	}
 	
 	return 0;
